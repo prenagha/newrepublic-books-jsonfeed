@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import json
@@ -24,7 +24,10 @@ def log(message):
 def lambda_handler(event, context):
     return {
         'statusCode': 200,
-        'headers': {'Content-Type': 'application/json', 'Cache-Control': 'max-age=14400'},
+        'headers': {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'max-age=720'
+        },
         'body': get_json_feed(False)
     }
 
@@ -47,13 +50,16 @@ def get_json_feed(debug):
     page = BeautifulSoup(html.text, 'html.parser')
     log("Parse End")
 
+    oldest = datetime.now(ZoneInfo('America/New_York')) - timedelta(days=65)
     feed_items = []
     for article in page.find_all('div', {'class': 'articleResults__result'}):
-        article_heading = article.find('a', {'class': 'Hed'})
-        article_title = article_heading.get(key='title')
-        article_url = article_heading.get(key='href')
         article_date_string = article.find('div', {'class': 'articleResults__date'}).text
-        article_date = datetime.strptime(article_date_string, "%B %d, %Y").isoformat()
+        article_date = datetime.strptime(article_date_string, "%B %d, %Y").astimezone(ZoneInfo('America/New_York'))
+        if article_date < oldest:
+            continue
+        article_heading = article.find('a', {'class': 'Hed'})
+        article_title = article.find('div', {'class': 'Hed'}).text
+        article_url = article_heading.get(key='href')
         article_author = article.find('div', {'class': 'articleResults__byline'}).text.strip()
         article_body = article_title + '<br/>' + article.find('div', {'class': 'Dek'}).text
         article_image = ICON
@@ -66,7 +72,7 @@ def get_json_feed(debug):
             'authors': [{'name': article_author}],
             'url': article_url,
             'content_html': article_body,
-            'date_published': article_date,
+            'date_published': article_date.isoformat(),
             'image': article_image,
             'banner_image': article_image,
         }
