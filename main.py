@@ -59,10 +59,20 @@ def get_json_feed(debug):
             continue
         article_heading = article.find('a', {'class': 'Hed'})
         article_title = article.find('div', {'class': 'Hed'}).text
-        article_url = article_heading.get(key='href')
+        article_url = 'https://newrepublic.com' + article_heading.get(key='href')
         article_author = article.find('div', {'class': 'articleResults__byline'}).text.strip()
-        article_body = article_title + '<br/>' + article.find('div', {'class': 'Dek'}).text
+
+        article_page = BeautifulSoup(requests.get(article_url).content, 'html.parser')
+        article_body = str(article_page.find('div', {'class': 'article-body'}))
+
         article_image = ICON
+        lede = article_page.find('div', {'class': 'article-lede'})
+        if lede is not None:
+            picture = lede.find('picture')
+            if picture is not None:
+                source = picture.find('source')
+                if source is not None:
+                    article_image = 'https:' + source.get('data-srcset').split(' ', 1)[0]
 
         log(article_title)
 
