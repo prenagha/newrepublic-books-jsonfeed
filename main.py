@@ -71,7 +71,7 @@ def get_json_feed(debug):
             picture = lede.find('picture')
             if picture is not None:
                 source = picture.find('source')
-                if source is not None:
+                if source is not None and source.get('data-srcset') is not None:
                     article_image = 'https:' + source.get('data-srcset').split(' ', 1)[0]
 
         log(article_title)
