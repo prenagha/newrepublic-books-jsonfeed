@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import dateparser
 import json
 import os
 import requests
@@ -50,11 +51,19 @@ def get_json_feed(debug):
     page = BeautifulSoup(html.text, 'html.parser')
     log("Parse End")
 
-    oldest = datetime.now(ZoneInfo('America/New_York')) - timedelta(days=65)
+    tz = ZoneInfo('America/New_York')
+    oldest = datetime.now(tz) - timedelta(days=65)
     feed_items = []
     for article in page.find_all('div', {'class': 'articleResults__result'}):
         article_date_string = article.find('div', {'class': 'articleResults__date'}).text
-        article_date = datetime.strptime(article_date_string, "%B %d, %Y").astimezone(ZoneInfo('America/New_York'))
+        try:
+            article_date = datetime.strptime(article_date_string, "%B %d, %Y").astimezone(tz)
+        except ValueError:
+            article_date = dateparser.parse(article_date_string,
+                                            settings={'REQUIRE_PARTS': ['day', 'month', 'year'],
+                                                      'DEFAULT_LANGUAGES': ['en'],
+                                                      'TIMEZONE': str(tz)}).astimezone(tz)
+            log("Extended date parse " + str(article_date) + " of " + article_date_string)
         if article_date < oldest:
             continue
         article_heading = article.find('a', {'class': 'Hed'})
